@@ -1,0 +1,37 @@
+{
+  "timestamp": "2026-03-05T19:02:13.994Z",
+  "body": {
+    "amount": "200000",
+    "purpose": "medical",
+    "personalDetails": "{\"fullName\":\"sowmi\",\"address\":\"1/908 namakkal\",\"phone\":\"123456765432\",\"dob\":\"2009-08-02\"}",
+    "employmentDetails": "{\"occupation\":\"weaver\",\"monthlyIncome\":\"96000\",\"employerName\":\"sowmi\"}",
+    "bankDetails": "{\"accountNumber\":\"4874874847\",\"bankName\":\"canara bank\",\"ifscCode\":\"can64864\"}"
+  },
+  "files": [
+    "idProof",
+    "salarySlip",
+    "bankStatement"
+  ],
+  "headers": "multipart/form-data; boundary=----WebKitFormBoundarywB62ztW1p8TrqjOp"
+}
+---
+{
+  "timestamp": "2026-03-06T10:11:36.113Z",
+  "body": {
+    "amount": "300000000",
+    "purpose": "buiness"
+  },
+  "files": "none",
+  "headers": "application/json"
+}
+---
+{
+  "timestamp": "2026-03-06T10:12:01.278Z",
+  "body": {
+    "amount": "1122345",
+    "purpose": "farming"
+  },
+  "files": "none",
+  "headers": "application/json"
+}
+---
