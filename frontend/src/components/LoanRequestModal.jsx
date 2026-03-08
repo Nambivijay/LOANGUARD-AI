@@ -32,8 +32,8 @@ const LoanRequestModal = ({ isOpen, onClose, onRefresh }) => {
                 <h2 className="gradient-text" style={{ marginBottom: '2rem' }}>Request Loan</h2>
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Loan Amount ($)</label>
-                        <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 5000" style={{ width: '100%' }} required />
+                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Loan Amount (₹)</label>
+                        <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 200000" style={{ width: '100%' }} required />
                     </div>
                     <div>
                         <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Purpose</label>

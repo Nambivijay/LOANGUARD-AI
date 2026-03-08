@@ -6,6 +6,12 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     role: { type: String, enum: ['borrower', 'vendor', 'admin'], default: 'borrower' },
+    notifications: [{
+        message: { type: String, required: true },
+        type: { type: String, enum: ['info', 'success', 'warning', 'error'], default: 'info' },
+        isRead: { type: Boolean, default: false },
+        createdAt: { type: Date, default: Date.now }
+    }],
     createdAt: { type: Date, default: Date.now }
 });
 

@@ -23,15 +23,18 @@ const loanSchema = new mongoose.Schema({
     },
     documents: {
         idProof: { type: String },
-        salarySlip: { type: String },
         bankStatement: { type: String }
     },
     status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
     disbursedAmount: { type: Number, default: 0 },
+    tenureMonths: { type: Number, default: 12 },
+    interestRate: { type: Number, default: 12 }, // Annual rate
+    emi: { type: Number },
     paymentConfirmed: { type: Boolean, default: false },
     deliveryStatus: { type: String, enum: ['pending', 'shipped', 'delivered'], default: 'pending' },
     isSuspicious: { type: Boolean, default: false },
     suspiciousReason: { type: String },
+    utilizationConfirmed: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now }
 });
 

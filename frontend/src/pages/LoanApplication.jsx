@@ -2,12 +2,24 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const calculateEMI = (amount, annualRate, months) => {
+    const P = Number(amount);
+    const R = (Number(annualRate) || 12) / 12 / 100;
+    const N = Number(months);
+    if (!P || !R || !N) return 0;
+    const emi = (P * R * Math.pow(1 + R, N)) / (Math.pow(1 + R, N) - 1);
+    return Math.round(emi);
+};
 
 const LoanApplication = () => {
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState({
         amount: '',
         purpose: '',
+        interestRate: 12, // Default annual rate
+        tenureMonths: 12, // Default tenure
         personalDetails: {
             fullName: '',
             address: '',
@@ -28,7 +40,6 @@ const LoanApplication = () => {
 
     const [files, setFiles] = useState({
         idProof: null,
-        salarySlip: null,
         bankStatement: null
     });
     const [isVerified, setIsVerified] = useState(false);
@@ -59,7 +70,7 @@ const LoanApplication = () => {
     };
 
     const handleVerify = async () => {
-        if (!files.idProof || !files.salarySlip || !files.bankStatement) {
+        if (!files.idProof || !files.bankStatement) {
             showToast('Please upload all required files first.', 'error');
             return;
         }
@@ -67,7 +78,6 @@ const LoanApplication = () => {
         setIsVerifying(true);
         const data = new FormData();
         data.append('idProof', files.idProof);
-        data.append('salarySlip', files.salarySlip);
         data.append('bankStatement', files.bankStatement);
 
         try {
@@ -80,8 +90,14 @@ const LoanApplication = () => {
             showToast('Files successfully verified', 'success');
             setIsVerified(true);
         } catch (error) {
-            console.error('Verification error:', error);
-            const message = error.response?.data?.message || 'Verification failed. Please check your files.';
+            console.error('Verification error details:', error.response?.data);
+            const data = error.response?.data;
+            let message = data?.message || 'Verification failed. Please check your files.';
+
+            if (data?.errors && data.errors.length > 0) {
+                message += ' ' + data.errors.join(' ');
+            }
+
             showToast(message, 'error');
             setIsVerified(false);
         } finally {
@@ -94,15 +110,27 @@ const LoanApplication = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Final validation check
+        const { personalDetails, employmentDetails, bankDetails, amount, purpose } = formData;
+        if (!amount || !purpose ||
+            !personalDetails.fullName || !personalDetails.address || !personalDetails.phone || !personalDetails.dob ||
+            !employmentDetails.occupation || !employmentDetails.monthlyIncome || !employmentDetails.employerName ||
+            !bankDetails.bankName || !bankDetails.accountNumber || !bankDetails.ifscCode) {
+            showToast('Please fill in all required fields across all steps.', 'error');
+            return;
+        }
+
         const data = new FormData();
         data.append('amount', String(formData.amount));
         data.append('purpose', String(formData.purpose));
+        data.append('interestRate', String(formData.interestRate));
         data.append('personalDetails', JSON.stringify(formData.personalDetails));
         data.append('employmentDetails', JSON.stringify(formData.employmentDetails));
         data.append('bankDetails', JSON.stringify(formData.bankDetails));
+        data.append('tenureMonths', String(formData.tenureMonths));
 
         if (files.idProof) data.append('idProof', files.idProof);
-        if (files.salarySlip) data.append('salarySlip', files.salarySlip);
         if (files.bankStatement) data.append('bankStatement', files.bankStatement);
 
         try {
@@ -152,12 +180,52 @@ const LoanApplication = () => {
                 {step === 3 && (
                     <div className="form-step">
                         <h2>Step 3: Loan & Bank Details</h2>
-                        <input type="number" name="amount" placeholder="Loan Amount" value={formData.amount} onChange={handleChange} required />
+                        <input type="number" name="amount" placeholder="Loan Amount (₹)" value={formData.amount} onChange={handleChange} required />
                         <input type="text" name="purpose" placeholder="Loan Purpose" value={formData.purpose} onChange={handleChange} required />
                         <h3>Bank Details</h3>
                         <input type="text" name="bankDetails.bankName" placeholder="Bank Name" value={formData.bankDetails.bankName} onChange={handleChange} required />
                         <input type="text" name="bankDetails.accountNumber" placeholder="Account Number" value={formData.bankDetails.accountNumber} onChange={handleChange} required />
                         <input type="text" name="bankDetails.ifscCode" placeholder="IFSC Code" value={formData.bankDetails.ifscCode} onChange={handleChange} required />
+
+                        <div style={{ marginTop: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#475569', fontWeight: 600 }}>Interest Rate (% Annual)</label>
+                            <input type="number" name="interestRate" placeholder="Interest Rate (%)" value={formData.interestRate} onChange={handleChange} required />
+                        </div>
+
+                        <div style={{ marginTop: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#475569', fontWeight: 600 }}>Tenure (Months)</label>
+                            <select name="tenureMonths" value={formData.tenureMonths} onChange={handleChange} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                                <option value={12}>12 Months</option>
+                                <option value={24}>24 Months</option>
+                                <option value={36}>36 Months</option>
+                                <option value={48}>48 Months</option>
+                                <option value={60}>60 Months</option>
+                            </select>
+                        </div>
+
+                        {formData.amount && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                style={{
+                                    marginTop: '2rem',
+                                    padding: '1.5rem',
+                                    background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+                                    borderRadius: '16px',
+                                    color: 'white',
+                                    textAlign: 'center',
+                                    boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
+                                }}
+                            >
+                                <div style={{ fontSize: '0.9rem', color: '#94a3b8', marginBottom: '0.5rem' }}>Estimated Monthly EMI</div>
+                                <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#38bdf8' }}>
+                                    ₹{calculateEMI(formData.amount, formData.interestRate, formData.tenureMonths).toLocaleString()}
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>
+                                    Formula: [P × R × (1+R)^N] / [(1+R)^N - 1]
+                                </div>
+                            </motion.div>
+                        )}
                         <div className="button-group">
                             <button type="button" onClick={prevStep}>Back</button>
                             <button type="button" onClick={nextStep}>Next</button>
@@ -171,10 +239,6 @@ const LoanApplication = () => {
                         <div className="file-input">
                             <label>ID Proof (Aadhar/PAN)</label>
                             <input type="file" name="idProof" onChange={handleFileChange} required />
-                        </div>
-                        <div className="file-input">
-                            <label>Salary Slip</label>
-                            <input type="file" name="salarySlip" onChange={handleFileChange} required />
                         </div>
                         <div className="file-input">
                             <label>Bank Statement</label>

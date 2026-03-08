@@ -35,3 +35,190 @@
   "headers": "application/json"
 }
 ---
+{
+  "timestamp": "2026-03-06T18:19:51.523Z",
+  "body": {
+    "amount": "",
+    "purpose": "",
+    "personalDetails": "{\"fullName\":\"\",\"address\":\"\",\"phone\":\"\",\"dob\":\"\"}",
+    "employmentDetails": "{\"occupation\":\"\",\"monthlyIncome\":\"\",\"employerName\":\"\"}",
+    "bankDetails": "{\"accountNumber\":\"\",\"bankName\":\"\",\"ifscCode\":\"\"}"
+  },
+  "files": [
+    "idProof",
+    "bankStatement"
+  ],
+  "headers": "multipart/form-data; boundary=----WebKitFormBoundary8XsxH9s2ZtBx8eG6"
+}
+---
+{
+  "timestamp": "2026-03-06T18:21:53.705Z",
+  "body": {
+    "amount": "200000",
+    "purpose": "power looms material",
+    "personalDetails": "{\"fullName\":\"diga\",\"address\":\"1/23 sjucuhnfjfnf\",\"phone\":\"1232432556\",\"dob\":\"1995-04-23\"}",
+    "employmentDetails": "{\"occupation\":\"weaver\",\"monthlyIncome\":\"95000\",\"employerName\":\"diga\"}",
+    "bankDetails": "{\"accountNumber\":\"12345678\",\"bankName\":\"canara bank\",\"ifscCode\":\"hdhdu2333\"}"
+  },
+  "files": [
+    "idProof",
+    "bankStatement"
+  ],
+  "headers": "multipart/form-data; boundary=----WebKitFormBoundaryX2XPGyh2j7KECXfO"
+}
+---
+{
+  "timestamp": "2026-03-06T18:31:43.707Z",
+  "body": {
+    "amount": "200000",
+    "purpose": "medical",
+    "personalDetails": "{\"fullName\":\"lali\",\"address\":\"1/200 st\",\"phone\":\"746746466\",\"dob\":\"1996-03-12\"}",
+    "employmentDetails": "{\"occupation\":\"weaver\",\"monthlyIncome\":\"70000\",\"employerName\":\"nainc\"}",
+    "bankDetails": "{\"accountNumber\":\"12345678\",\"bankName\":\"canara bank\",\"ifscCode\":\"hdhdu2333\"}"
+  },
+  "files": [
+    "idProof",
+    "bankStatement"
+  ],
+  "headers": "multipart/form-data; boundary=----WebKitFormBoundaryE70ZRQjayuB3J0zu"
+}
+---
+{
+  "timestamp": "2026-03-06T18:53:46.246Z",
+  "body": {
+    "amount": "300000",
+    "purpose": "shopping",
+    "personalDetails": "{\"fullName\":\"nambi\",\"address\":\"1;099 st\",\"phone\":\"747675346765\",\"dob\":\"8487-03-12\"}",
+    "employmentDetails": "{\"occupation\":\"weaver\",\"monthlyIncome\":\"30000\",\"employerName\":\"nabi\"}",
+    "bankDetails": "{\"accountNumber\":\"232884\",\"bankName\":\"canara bank\",\"ifscCode\":\"can38374\"}"
+  },
+  "files": [
+    "idProof",
+    "bankStatement"
+  ],
+  "headers": "multipart/form-data; boundary=----WebKitFormBoundarymmc1OAMClYZVgcyr"
+}
+---
+{
+  "timestamp": "2026-03-06T19:05:40.548Z",
+  "body": {
+    "amount": "200000",
+    "purpose": "material shopping",
+    "personalDetails": "{\"fullName\":\"nambi\",\"address\":\"1/989 st namakkal\",\"phone\":\"7837383738\",\"dob\":\"\"}",
+    "employmentDetails": "{\"occupation\":\"weaver\",\"monthlyIncome\":\"30000\",\"employerName\":\"nambi\"}",
+    "bankDetails": "{\"accountNumber\":\"232884\",\"bankName\":\"canara bank\",\"ifscCode\":\"can38374\"}",
+    "tenureMonths": "24"
+  },
+  "files": [
+    "idProof",
+    "bankStatement"
+  ],
+  "headers": "multipart/form-data; boundary=----WebKitFormBoundaryLyc2v4LtdNsz7d3R"
+}
+---
+{
+  "timestamp": "2026-03-06T19:24:30.244Z",
+  "body": {
+    "amount": "10000",
+    "purpose": "Home renovation",
+    "personalDetails": "{\"fullName\":\"John Doe\",\"address\":\"123 Main St\",\"phone\":\"1234567890\",\"dob\":\"1990-01-01\"}",
+    "employmentDetails": "{\"occupation\":\"Software Engineer\",\"monthlyIncome\":\"5000\",\"employerName\":\"Tech Corp\"}",
+    "bankDetails": "{\"accountNumber\":\"1234567890\",\"bankName\":\"Test Bank\",\"ifscCode\":\"TEST0001234\"}",
+    "tenureMonths": "12"
+  },
+  "files": [
+    "idProof",
+    "bankStatement"
+  ],
+  "headers": "multipart/form-data; boundary=----WebKitFormBoundaryulJ3sUGY8z41IH5w"
+}
+---
+{
+  "timestamp": "2026-03-06T19:28:41.289Z",
+  "body": {
+    "amount": "200000",
+    "purpose": "home shopping",
+    "personalDetails": "{\"fullName\":\"lali\",\"address\":\"1/200 st\",\"phone\":\"4536787645\",\"dob\":\"1995-03-23\"}",
+    "employmentDetails": "{\"occupation\":\"software employ\",\"monthlyIncome\":\"20000\",\"employerName\":\"nambi\"}",
+    "bankDetails": "{\"accountNumber\":\"13245676\",\"bankName\":\"canarabank\",\"ifscCode\":\"can2345\"}",
+    "tenureMonths": "12"
+  },
+  "files": [
+    "idProof",
+    "bankStatement"
+  ],
+  "headers": "multipart/form-data; boundary=----WebKitFormBoundaryOJMUPSoqTtRJ5d1Y"
+}
+---
+{
+  "timestamp": "2026-03-07T03:00:33.630Z",
+  "body": {
+    "amount": "200000",
+    "purpose": "house loan",
+    "interestRate": "9",
+    "personalDetails": "{\"fullName\":\"kani\",\"address\":\"1/345 namakkal st\",\"phone\":\"6574839876\",\"dob\":\"1995-09-23\"}",
+    "employmentDetails": "{\"occupation\":\"software engineer\",\"monthlyIncome\":\"30000\",\"employerName\":\"kani\"}",
+    "bankDetails": "{\"accountNumber\":\"13245676\",\"bankName\":\"canarabank\",\"ifscCode\":\"can2345\"}",
+    "tenureMonths": "24"
+  },
+  "files": [
+    "idProof",
+    "bankStatement"
+  ],
+  "headers": "multipart/form-data; boundary=----WebKitFormBoundaryzABSL9IR8KMAIyLi"
+}
+---
+{
+  "timestamp": "2026-03-07T03:11:13.157Z",
+  "body": {
+    "amount": "200000",
+    "purpose": "house loan",
+    "interestRate": "10",
+    "personalDetails": "{\"fullName\":\"kannan\",\"address\":\"1/34 salem\",\"phone\":\"7658498848\",\"dob\":\"2005-04-23\"}",
+    "employmentDetails": "{\"occupation\":\"software engineer\",\"monthlyIncome\":\"30000\",\"employerName\":\"kannan\"}",
+    "bankDetails": "{\"accountNumber\":\"13245676\",\"bankName\":\"canarabank\",\"ifscCode\":\"can2345\"}",
+    "tenureMonths": "24"
+  },
+  "files": [
+    "idProof",
+    "bankStatement"
+  ],
+  "headers": "multipart/form-data; boundary=----WebKitFormBoundaryB4qg2b5uMVrq06yy"
+}
+---
+{
+  "timestamp": "2026-03-07T17:04:45.071Z",
+  "body": {
+    "amount": "200000",
+    "purpose": "house loan",
+    "interestRate": "12",
+    "personalDetails": "{\"fullName\":\"nambi\",\"address\":\"1/200 thangalaslai\",\"phone\":\"758383783\",\"dob\":\"2006-07-21\"}",
+    "employmentDetails": "{\"occupation\":\"software enginer\",\"monthlyIncome\":\"30000\",\"employerName\":\"kannan\"}",
+    "bankDetails": "{\"accountNumber\":\"13245676\",\"bankName\":\"canarabank\",\"ifscCode\":\"can2345\"}",
+    "tenureMonths": "12"
+  },
+  "files": [
+    "idProof",
+    "bankStatement"
+  ],
+  "headers": "multipart/form-data; boundary=----WebKitFormBoundaryTAEgZyoRI1Apggms"
+}
+---
+{
+  "timestamp": "2026-03-07T17:25:01.547Z",
+  "body": {
+    "amount": "200000",
+    "purpose": "health issues",
+    "interestRate": "10",
+    "personalDetails": "{\"fullName\":\"nambi\",\"address\":\"1/2000 st \",\"phone\":\"9848885785\",\"dob\":\"1995-09-20\"}",
+    "employmentDetails": "{\"occupation\":\"software developer\",\"monthlyIncome\":\"30000\",\"employerName\":\"nambi\"}",
+    "bankDetails": "{\"accountNumber\":\"13245676\",\"bankName\":\"canarabank\",\"ifscCode\":\"can2345\"}",
+    "tenureMonths": "24"
+  },
+  "files": [
+    "idProof",
+    "bankStatement"
+  ],
+  "headers": "multipart/form-data; boundary=----WebKitFormBoundaryMtP9bwxDsdfbjdFX"
+}
+---

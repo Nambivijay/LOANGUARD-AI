@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const utilizationSchema = new mongoose.Schema({
     loan: { type: mongoose.Schema.Types.ObjectId, ref: 'Loan', required: true },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    vendor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     category: { type: String, required: true },
     amount: { type: Number, required: true },
     description: { type: String },
