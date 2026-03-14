@@ -1,13 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { DollarSign, TrendingUp, PieChart, Clock, Upload } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import UtilizationModal from '../components/UtilizationModal';
+import RatingModal from '../components/RatingModal';
+import EMIPaymentModal from '../components/EMIPaymentModal';
+import LinkBankModal from '../components/LinkBankModal';
+import PaymentMethodModal from '../components/PaymentMethodModal';
+import { DollarSign, TrendingUp, PieChart, Clock, Upload, Tag, Star, ShieldCheck, Download, Settings, Landmark } from 'lucide-react';
+import './Dashboard.css';
 
-const Dashboard = ({ user }) => {
+const Dashboard = ({ user: initialUser }) => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const [user, setUserState] = useState(initialUser);
+
+    useEffect(() => {
+        setUserState(initialUser);
+    }, [initialUser]);
     const [loans, setLoans] = useState([]);
     const [stats, setStats] = useState({ totalLoan: 0, utilized: 0, remaining: 0 });
     const [isUtilizationModalOpen, setIsUtilizationModalOpen] = useState(false);
@@ -16,27 +27,47 @@ const Dashboard = ({ user }) => {
     const [payments, setPayments] = useState([]);
     const [activeLoanId, setActiveLoanId] = useState(null);
     const [notifications, setNotifications] = useState([]);
+    const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
+    const [ratingTarget, setRatingTarget] = useState({ vendorId: null, loanId: null, vendorName: '' });
+    const [vendorRatings, setVendorRatings] = useState({}); // vendorId -> rating
+    const [selectedLoanBills, setSelectedLoanBills] = useState({}); // loanId -> bills[]
+    const [loadingBills, setLoadingBills] = useState({});
+
+    // EMI Payment Modal State
+    const [isEMIModalOpen, setIsEMIModalOpen] = useState(false);
+    const [emiPaymentData, setEmiPaymentData] = useState({ loanId: null, amount: 0, purpose: '' });
+    const [isPaymentMethodModalOpen, setIsPaymentMethodModalOpen] = useState(false);
+    const [showCertificateLoans, setShowCertificateLoans] = useState({}); // { loanId: boolean }
+    const [isLinkBankModalOpen, setIsLinkBankModalOpen] = useState(false);
+    const [transactions, setTransactions] = useState([]);
+    const [eligibilityResult, setEligibilityResult] = useState(null);
+
 
     const fetchProfile = async () => {
         try {
             const token = localStorage.getItem('token');
-            const { data } = await axios.get('http://127.0.0.1:5001/api/auth/me', {
+            const { data } = await axios.get('/api/auth/me', {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            setUserState(data); // Use setUserState to update the component's user state
+            localStorage.setItem('user', JSON.stringify(data)); // Update localStorage
             setNotifications(data.notifications || []);
         } catch (error) {
-            console.error('Profile fetch error:', error);
+            console.error('Fetch profile error:', error);
         }
     };
 
     const fetchData = async () => {
         try {
             const token = localStorage.getItem('token');
-            const { data } = await axios.get('http://127.0.0.1:5001/api/loans', {
+            const { data } = await axios.get('/api/loans', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setLoans(data);
-            if (data.length > 0 && !activeLoanId) setActiveLoanId(data[0]._id);
+            if (data.length > 0 && !activeLoanId) {
+                const approvedLoan = data.find(l => l.status === 'approved');
+                setActiveLoanId(approvedLoan ? approvedLoan._id : data[0]._id);
+            }
             const total = data.reduce((acc, curr) => acc + (curr.status === 'approved' ? curr.amount : 0), 0);
             const utilizedAmount = data.reduce((acc, curr) => acc + (curr.alreadyUtilized || 0), 0);
             setStats({
@@ -44,15 +75,31 @@ const Dashboard = ({ user }) => {
                 utilized: utilizedAmount,
                 remaining: total - utilizedAmount
             });
+
+            // Fetch ratings for vendors in loans
+            data.forEach(loan => {
+                if (loan.vendor && !vendorRatings[loan.vendor._id]) {
+                    fetchVendorRating(loan.vendor._id);
+                }
+            });
         } catch (error) {
             console.error('Fetch error:', error);
+        }
+    };
+
+    const fetchVendorRating = async (vendorId) => {
+        try {
+            const { data } = await axios.get(`/api/reviews/${vendorId}/stats`);
+            setVendorRatings(prev => ({ ...prev, [vendorId]: data.averageRating }));
+        } catch (error) {
+            console.error('Fetch rating error:', error);
         }
     };
 
     const fetchPayments = async (loanId) => {
         try {
             const token = localStorage.getItem('token');
-            const { data } = await axios.get(`http://127.0.0.1:5001/api/loans/${loanId}/payments`, {
+            const { data } = await axios.get(`/api/loans/${loanId}/payments`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setPayments(data);
@@ -61,18 +108,29 @@ const Dashboard = ({ user }) => {
         }
     };
 
-    const handlePayEMI = async (loanId, emiAmount) => {
+    const fetchLoanBills = async (loanId) => {
         try {
+            setLoadingBills(prev => ({ ...prev, [loanId]: true }));
             const token = localStorage.getItem('token');
-            await axios.post('http://127.0.0.1:5001/api/loans/emi-payment', { loanId, amount: emiAmount }, {
+            const { data } = await axios.get(`/api/loans/${loanId}/utilization`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            alert('EMI Paid successfully');
-            fetchPayments(loanId);
-            fetchData();
+            setSelectedLoanBills(prev => ({ ...prev, [loanId]: data }));
         } catch (error) {
-            alert('Payment failed: ' + (error.response?.data?.message || error.message));
+            console.error('Fetch bills error:', error);
+        } finally {
+            setLoadingBills(prev => ({ ...prev, [loanId]: false }));
         }
+    };
+
+    const handlePayEMI = (loanId, emiAmount, purpose) => {
+        if (!user?.isBankLinked) {
+            alert('Please link your bank account first before making an EMI payment.');
+            setIsLinkBankModalOpen(true);
+            return;
+        }
+        setEmiPaymentData({ loanId, amount: emiAmount, purpose });
+        setIsEMIModalOpen(true);
     };
 
     useEffect(() => {
@@ -82,75 +140,219 @@ const Dashboard = ({ user }) => {
         }
     }, [activeLoanId]);
 
+    const fetchTransactions = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const { data } = await axios.get('/api/loans/transactions', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setTransactions(data);
+        } catch (error) {
+            console.error('Fetch transactions error:', error);
+        }
+    };
+
     useEffect(() => {
         fetchData();
         fetchProfile();
-    }, []);
+        fetchTransactions();
+        
+        if (location.state && location.state.eligibilityResult) {
+            setEligibilityResult(location.state.eligibilityResult);
+            // Clear state to avoid re-showing on refresh
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state]);
 
-    const chartData = [
-        { name: 'Jan', value: 400 },
-        { name: 'Feb', value: 700 },
-        { name: 'Mar', value: 900 },
-        { name: 'Apr', value: 1200 },
-        { name: 'May', value: 1500 },
-    ];
+    const handleDownloadCertificate = async (loanId) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`/api/loans/${loanId}/certificate`, {
+                headers: { Authorization: `Bearer ${token}` },
+                responseType: 'blob'
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            const isClosed = loans.find(l => l._id === loanId)?.isClosed;
+            link.setAttribute('download', `${isClosed ? 'NoDueCertificate' : 'Receipt'}_${loanId}.txt`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            console.error('Download error:', error);
+            alert('Download failed. Please try again.');
+        }
+    };
 
     const renderBorrowerDashboard = () => {
         const activeLoan = loans.find(l => l._id === activeLoanId);
 
         return (
-            <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h1 className="gradient-text">Borrower Overview</h1>
-                    <button className="btn-primary" onClick={() => navigate('/apply-loan')}>
-                        <DollarSign size={18} /> Apply for New Loan
-                    </button>
+            <div className="dashboard-content-wrapper">
+                <div className="dashboard-header" style={{ marginBottom: '1.5rem' }}>
+                    <div>
+                        <h1 className="gradient-text" style={{ fontSize: '1.5rem', marginBottom: '4px' }}>Welcome back, {user?.name || 'User'}</h1>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Quick access to your active loan details and statistics.</p>
+                    </div>
+
+                    {!user?.isBankLinked && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="card glass bank-alert-banner"
+                            style={{ 
+                                padding: '15px 20px', 
+                                border: '1px solid rgba(16, 185, 129, 0.3)', 
+                                background: 'rgba(16, 185, 129, 0.05)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '15px',
+                                flex: 1,
+                                margin: '0 20px'
+                            }}
+                        >
+                            <Landmark color="#10b981" size={24} />
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>Bank Account Not Linked</div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Link your bank account to enable EMI payments and automate your tracking.</div>
+                            </div>
+                            <button 
+                                className="btn-primary" 
+                                style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                                onClick={() => setIsLinkBankModalOpen(true)}
+                            >
+                                Link Now
+                            </button>
+                        </motion.div>
+                    )}
+                    <div className="dashboard-actions">
+                        <button className="btn-secondary" style={{ padding: '10px 18px', fontSize: '0.9rem' }} onClick={() => navigate('/loan-offers')}>
+                            <Tag size={16} /> Offers
+                        </button>
+                        <button className="btn-primary" style={{ padding: '10px 18px', fontSize: '0.9rem' }} onClick={() => navigate('/apply-loan')}>
+                            <DollarSign size={16} /> New Loan
+                        </button>
+                    </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
-                    <StatCard icon={<TrendingUp color="#6366f1" />} title="Total Loan" value={`₹${stats.totalLoan}`} sub="Approved Total" />
+                {eligibilityResult && (
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className={`card glass ${eligibilityResult.eligible ? 'success-card' : 'info-card'}`}
+                        style={{ 
+                            padding: '1.5rem', 
+                            marginBottom: '1.5rem', 
+                            border: `1px solid ${eligibilityResult.eligible ? '#10b981' : '#3b82f6'}`,
+                            background: `rgba(${eligibilityResult.eligible ? '16, 185, 129' : '59, 130, 246'}, 0.05)`
+                        }}
+                    >
+                        <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '4px', color: eligibilityResult.eligible ? '#10b981' : '#3b82f6' }}>
+                            {eligibilityResult.eligible ? 'Loan Automatically Approved!' : 'Application Under Review'}
+                        </div>
+                        <p style={{ margin: 0, fontSize: '0.9rem' }}>{eligibilityResult.message}</p>
+                        <button 
+                            onClick={() => setEligibilityResult(null)}
+                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.8rem', cursor: 'pointer', marginTop: '10px', textDecoration: 'underline' }}
+                        >
+                            Dismiss
+                        </button>
+                    </motion.div>
+                )}
+
+                <div className="stats-grid">
+                    <StatCard icon={<TrendingUp color="#10b981" />} title="Total Loan" value={`₹${stats.totalLoan}`} sub="Approved Total" />
                     <StatCard
-                        icon={<PieChart color="#a855f7" />}
+                        icon={<PieChart color="#10b981" />}
                         title="Utilized"
-                        value={`₹${stats.utilized.toFixed(2)}`}
+                        value={`₹${(stats.utilized || 0).toFixed(2)}`}
                         sub={stats.utilized > 0 ? `${((stats.utilized / (stats.totalLoan || 1)) * 100).toFixed(0)}% of total` : "No utilization yet"}
                     />
                     <StatCard
-                        icon={<Clock color="#22d3ee" />}
+                        icon={<Clock color="#10b981" />}
                         title="Remaining"
-                        value={`₹${stats.remaining.toFixed(2)}`}
+                        value={`₹${(stats.remaining || 0).toFixed(2)}`}
                         sub={stats.totalLoan > 0 ? `${((stats.remaining / stats.totalLoan) * 100).toFixed(0)}% left` : "Available balance"}
                     />
                 </div>
 
                 {activeLoan && activeLoan.status === 'approved' && (
-                    <div className="card glass" style={{ marginTop: '1rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div className="card glass loan-details-card">
+                        <div className="loan-header">
                             <div>
-                                <h3 style={{ margin: 0 }}>Approved Loan Details</h3>
-                                <p style={{ color: 'var(--text-muted)' }}>{activeLoan.purpose}</p>
+                                <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Active Loan Details</h3>
+                                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{activeLoan.purpose}</p>
                             </div>
-                            <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary)' }}>EMI: ₹{activeLoan.emi}/mo</div>
-                                <div style={{ display: 'flex', gap: '10px', marginTop: '10px', justifyContent: 'flex-end' }}>
-                                    <button className="btn-primary" onClick={() => handlePayEMI(activeLoan._id, activeLoan.emi)}>Pay EMI</button>
-                                    <button className="btn-secondary" onClick={() => {
+                            <div className="loan-emi-info">
+                                <div className="loan-emi-value" style={{ fontSize: '1.2rem' }}>EMI: ₹{activeLoan.emi}/mo</div>
+                                <div style={{ display: 'flex', gap: '8px', marginTop: '8px', justifyContent: 'flex-end' }}>
+                                    {!activeLoan.isClosed && (
+                                        <button 
+                                            className="btn-primary" 
+                                            style={{ padding: '8px 14px', fontSize: '0.85rem' }} 
+                                            onClick={() => handlePayEMI(activeLoan._id, activeLoan.emi, activeLoan.purpose)}
+                                        >
+                                            Pay EMI
+                                        </button>
+                                    )}
+                                    
+                                    <button 
+                                        onClick={() => handleDownloadCertificate(activeLoan._id)}
+                                        className="btn-primary" 
+                                        style={{ padding: '8px 14px', fontSize: '0.85rem', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
+                                    >
+                                        <Download size={14} /> {activeLoan.isClosed ? 'Certificate' : 'Receipt'}
+                                    </button>
+                                    
+                                    <button className="btn-secondary" style={{ padding: '8px 14px', fontSize: '0.85rem' }} onClick={() => {
                                         setSelectedLoanId(activeLoan._id);
                                         setIsUtilizationModalOpen(true);
                                     }}>
-                                        <Upload size={16} style={{ marginRight: '8px' }} /> Upload Bill
+                                        <Upload size={14} /> Upload
                                     </button>
                                 </div>
                             </div>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '2rem', marginTop: '1.5rem', padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
+                        <div className="loan-grid-info">
                             <div>
                                 <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Vendor Details</h4>
                                 {activeLoan.vendor ? (
                                     <>
-                                        <div style={{ fontWeight: 600 }}>{activeLoan.vendor.name}</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <div style={{ fontWeight: 600 }}>{activeLoan.vendor.name}</div>
+                                            {vendorRatings[activeLoan.vendor._id] > 0 && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(251, 191, 36, 0.15)', color: '#fbbf24', padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 700, border: '1px solid rgba(251, 191, 36, 0.3)' }}>
+                                                    <Star size={14} fill="#fbbf24" strokeWidth={0} />
+                                                    {vendorRatings[activeLoan.vendor._id]}
+                                                </div>
+                                            )}
+                                        </div>
                                         <div style={{ fontSize: '0.85rem' }}>{activeLoan.vendor.email}</div>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setRatingTarget({
+                                                    vendorId: activeLoan.vendor._id,
+                                                    loanId: activeLoan._id,
+                                                    vendorName: activeLoan.vendor.name
+                                                });
+                                                setIsRatingModalOpen(true);
+                                            }}
+                                            className="btn-secondary"
+                                            style={{
+                                                fontSize: '0.75rem',
+                                                padding: '6px 12px',
+                                                marginTop: '10px',
+                                                width: 'fit-content',
+                                                color: 'var(--primary)',
+                                                border: '1px solid var(--primary)',
+                                                borderRadius: '8px'
+                                            }}
+                                        >
+                                            <Star size={14} style={{ marginRight: '4px' }} /> Rate Vendor
+                                        </button>
                                     </>
                                 ) : (
                                     <div style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>Pending Assignment</div>
@@ -160,6 +362,11 @@ const Dashboard = ({ user }) => {
                                 <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Payment Schedule</h4>
                                 <div style={{ fontWeight: 600 }}>{activeLoan.tenureMonths} Months</div>
                                 <div style={{ fontSize: '0.85rem' }}>{activeLoan.interestRate}% Annual Interest</div>
+                                {activeLoan.emiSchedule && activeLoan.emiSchedule.find(e => e.status === 'pending') && (
+                                    <div style={{ marginTop: '4px', fontSize: '0.8rem', color: '#f59e0b', fontWeight: 600 }}>
+                                        Next Due: {new Date(activeLoan.emiSchedule.find(e => e.status === 'pending').dueDate).toLocaleDateString()}
+                                    </div>
+                                )}
                             </div>
                             <div>
                                 <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Total Repaid</h4>
@@ -167,15 +374,43 @@ const Dashboard = ({ user }) => {
                                 <div style={{ fontSize: '0.85rem' }}>Remaining: ₹{(activeLoan.amount - (activeLoan.totalPaid || 0)).toLocaleString()}</div>
                             </div>
                         </div>
+
+                        {activeLoan.emiSchedule && activeLoan.emiSchedule.length > 0 && (
+                            <div style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.5rem' }}>
+                                <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>EMI Schedule</h4>
+                                <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+                                    {activeLoan.emiSchedule.map((emi, idx) => (
+                                        <div 
+                                            key={idx} 
+                                            style={{ 
+                                                minWidth: '140px', 
+                                                padding: '12px', 
+                                                background: emi.status === 'paid' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255,255,255,0.02)', 
+                                                borderRadius: '10px',
+                                                border: `1px solid ${emi.status === 'paid' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255,255,255,0.1)'}`,
+                                                opacity: emi.status === 'paid' ? 1 : 0.7
+                                            }}
+                                        >
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>EMI #{idx + 1}</div>
+                                            <div style={{ fontWeight: 700, margin: '4px 0' }}>₹{emi.amount}</div>
+                                            <div style={{ fontSize: '0.75rem' }}>{new Date(emi.dueDate).toLocaleDateString()}</div>
+                                            <div style={{ fontSize: '0.7rem', marginTop: '6px', color: emi.status === 'paid' ? '#10b981' : '#f59e0b' }}>
+                                                {emi.status.toUpperCase()}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
-                    <div className="card glass" style={{ height: '400px' }}>
+                <div className="dashboard-two-col">
+                    <div className="card glass history-card">
                         <h3 style={{ marginBottom: '1.5rem' }}>EMI Payment History</h3>
-                        <div style={{ overflowY: 'auto', height: '85%' }}>
+                        <div className="scroll-box">
                             {payments.length > 0 ? payments.map(p => (
-                                <div key={p._id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                <div key={p._id} className="history-item">
                                     <div>
                                         <div style={{ fontWeight: 600 }}>EMI Payment</div>
                                         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{new Date(p.paidAt).toLocaleString()}</div>
@@ -189,17 +424,17 @@ const Dashboard = ({ user }) => {
                         </div>
                     </div>
 
-                    <div className="card glass" style={{ height: '400px' }}>
+                    <div className="card glass submissions-card">
                         <h3 style={{ marginBottom: '1.5rem' }}>Bill Submissions</h3>
-                        <div style={{ overflowY: 'auto', height: '85%' }}>
+                        <div className="scroll-box">
                             {activeLoanId && selectedLoanBills[activeLoanId] ? selectedLoanBills[activeLoanId].map(bill => (
-                                <div key={bill._id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                <div key={bill._id} className="history-item">
                                     <div>
                                         <div style={{ fontWeight: 600 }}>{bill.category}</div>
                                         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>₹{bill.amount} - {bill.status.toUpperCase()}</div>
                                     </div>
                                     <div style={{ textAlign: 'right' }}>
-                                        {bill.proofImage && <a href={`http://127.0.0.1:5001${bill.proofImage}`} target="_blank" rel="noreferrer" style={{ fontSize: '0.75rem', color: 'var(--primary)' }}>View Proof</a>}
+                                        {bill.proofImage && <a href={bill.proofImage} target="_blank" rel="noreferrer" style={{ fontSize: '0.75rem', color: 'var(--primary)' }}>View Proof</a>}
                                     </div>
                                 </div>
                             )) : <div style={{ textAlign: 'center', color: 'var(--text-muted)', paddingTop: '2rem' }}>No bills uploaded for this loan.</div>}
@@ -217,8 +452,8 @@ const Dashboard = ({ user }) => {
                                 style={{
                                     padding: '12px',
                                     borderRadius: '8px',
-                                    background: activeLoanId === l._id ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
-                                    border: `1px solid ${activeLoanId === l._id ? 'rgba(99, 102, 241, 0.3)' : 'transparent'}`,
+                                    background: activeLoanId === l._id ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
+                                    border: `1px solid ${activeLoanId === l._id ? 'rgba(16, 185, 129, 0.3)' : 'transparent'}`,
                                     cursor: 'pointer',
                                     display: 'flex',
                                     justifyContent: 'space-between'
@@ -231,12 +466,17 @@ const Dashboard = ({ user }) => {
                                 <div style={{ textAlign: 'right' }}>
                                     <div style={{ fontWeight: 700, color: 'var(--accent)' }}>₹{l.amount}</div>
                                     <div style={{ fontSize: '0.7rem' }}>{new Date(l.createdAt).toLocaleDateString()}</div>
+                                    {l.vendor && vendorRatings[l.vendor._id] > 0 && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px', color: '#fbbf24', fontSize: '0.7rem', justifyContent: 'flex-end', marginTop: '4px' }}>
+                                            <Star size={10} fill="#fbbf24" strokeWidth={0} /> {vendorRatings[l.vendor._id]}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )) : <div style={{ textAlign: 'center', color: 'var(--text-muted)', paddingTop: '2rem' }}>No loans found.</div>}
                     </div>
                 </div>
-            </>
+            </div>
         );
     };
 
@@ -245,11 +485,12 @@ const Dashboard = ({ user }) => {
     const [suspiciousReason, setSuspiciousReason] = useState('');
     const [adminLoans, setAdminLoans] = useState([]);
     const [vendors, setVendors] = useState([]);
+    const [adminDueDays, setAdminDueDays] = useState({}); // loanId -> dueDay
 
     const fetchVendors = async () => {
         try {
             const token = localStorage.getItem('token');
-            const { data } = await axios.get('http://127.0.0.1:5001/api/auth/vendors', {
+            const { data } = await axios.get('/api/auth/vendors', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setVendors(data);
@@ -261,7 +502,7 @@ const Dashboard = ({ user }) => {
     const handleAssignVendor = async (loanId, vendorId) => {
         try {
             const token = localStorage.getItem('token');
-            await axios.put(`http://127.0.0.1:5001/api/loans/admin/assign-vendor/${loanId}`, { vendorId }, {
+            await axios.put(`/api/loans/admin/assign-vendor/${loanId}`, { vendorId }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchAdminLoans();
@@ -274,7 +515,7 @@ const Dashboard = ({ user }) => {
     const fetchAdminLoans = async () => {
         try {
             const token = localStorage.getItem('token');
-            const { data } = await axios.get('http://127.0.0.1:5001/api/loans/admin/all', {
+            const { data } = await axios.get('/api/loans/admin/all', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setAdminLoans(data);
@@ -286,7 +527,8 @@ const Dashboard = ({ user }) => {
     const handleAdminAction = async (loanId, status) => {
         try {
             const token = localStorage.getItem('token');
-            await axios.put(`http://127.0.0.1:5001/api/loans/admin/status/${loanId}`, { status }, {
+            const emiDueDay = adminDueDays[loanId];
+            await axios.put(`/api/loans/admin/status/${loanId}`, { status, emiDueDay }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchAdminLoans();
@@ -299,12 +541,37 @@ const Dashboard = ({ user }) => {
     const fetchVendorLoans = async () => {
         try {
             const token = localStorage.getItem('token');
-            const { data } = await axios.get('http://127.0.0.1:5001/api/loans/vendor/assigned', {
+            const { data } = await axios.get('/api/loans/vendor/assigned', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setVendorLoans(data);
         } catch (error) {
             console.error('Vendor fetch error:', error);
+        }
+    };
+
+    const handleVerifyBill = async (loanId, billId, status) => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.put(`/api/loans/vendor/utilization/${billId}`, { status }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            fetchLoanBills(loanId);
+        } catch (error) {
+            alert('Verification failed: ' + (error.response?.data?.message || error.message));
+        }
+    };
+
+    const handleConfirmUtilization = async (loanId) => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.put(`/api/loans/vendor/confirm-utilization/${loanId}`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            alert('Loan utilization confirmed successfully');
+            fetchVendorLoans();
+        } catch (error) {
+            alert('Confirmation failed: ' + (error.response?.data?.message || error.message));
         }
     };
 
@@ -322,7 +589,7 @@ const Dashboard = ({ user }) => {
     const handleVendorAction = async (loanId, actionData) => {
         try {
             const token = localStorage.getItem('token');
-            await axios.put(`http://127.0.0.1:5001/api/loans/vendor/loan/${loanId}`, actionData, {
+            await axios.put(`/api/loans/vendor/loan/${loanId}`, actionData, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             alert('Status updated successfully');
@@ -334,54 +601,11 @@ const Dashboard = ({ user }) => {
         }
     };
 
-    const [selectedLoanBills, setSelectedLoanBills] = useState({}); // loanId -> bills[]
-    const [loadingBills, setLoadingBills] = useState({});
-
-    const fetchLoanBills = async (loanId) => {
-        try {
-            setLoadingBills(prev => ({ ...prev, [loanId]: true }));
-            const token = localStorage.getItem('token');
-            const { data } = await axios.get(`http://127.0.0.1:5001/api/loans/${loanId}/utilization`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setSelectedLoanBills(prev => ({ ...prev, [loanId]: data }));
-        } catch (error) {
-            console.error('Fetch bills error:', error);
-        } finally {
-            setLoadingBills(prev => ({ ...prev, [loanId]: false }));
-        }
-    };
-
-    const handleVerifyBill = async (loanId, billId, status) => {
-        try {
-            const token = localStorage.getItem('token');
-            await axios.put(`http://127.0.0.1:5001/api/loans/vendor/utilization/${billId}`, { status }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            fetchLoanBills(loanId);
-        } catch (error) {
-            alert('Verification failed: ' + (error.response?.data?.message || error.message));
-        }
-    };
-
-    const handleConfirmUtilization = async (loanId) => {
-        try {
-            const token = localStorage.getItem('token');
-            await axios.put(`http://127.0.0.1:5001/api/loans/vendor/confirm-utilization/${loanId}`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            alert('Loan utilization confirmed successfully');
-            fetchVendorLoans();
-        } catch (error) {
-            alert('Confirmation failed: ' + (error.response?.data?.message || error.message));
-        }
-    };
-
     const renderVendorDashboard = () => (
-        <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h1 className="gradient-text">Vendor Operations</h1>
-                <div style={{ display: 'flex', gap: '1rem' }}>
+        <div className="dashboard-content-wrapper">
+            <div className="dashboard-header">
+                <h1 className="gradient-text" style={{ fontSize: '1.75rem' }}>Vendor Operations</h1>
+                <div className="dashboard-actions">
                     <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', padding: '4px', borderRadius: '12px' }}>
                         <button
                             className={vendorViewMode === 'active' ? 'btn-primary' : 'btn-secondary'}
@@ -459,7 +683,7 @@ const Dashboard = ({ user }) => {
                                             </div>
                                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                                                 {bill.proofImage && (
-                                                    <a href={`http://127.0.0.1:5001${bill.proofImage}`} target="_blank" rel="noreferrer" className="btn-secondary" style={{ fontSize: '0.8rem', padding: '6px 12px' }}>View</a>
+                                                    <a href={bill.proofImage} target="_blank" rel="noreferrer" className="btn-secondary" style={{ fontSize: '0.8rem', padding: '6px 12px' }}>View</a>
                                                 )}
                                                 <button className="btn-primary" style={{ fontSize: '0.8rem', padding: '6px 12px', background: '#10b981' }} onClick={() => handleVerifyBill(loan._id, bill._id, 'verified')}>Verify</button>
                                                 <button className="btn-primary" style={{ fontSize: '0.8rem', padding: '6px 12px', background: '#ef4444' }} onClick={() => handleVerifyBill(loan._id, bill._id, 'flagged')}>Flag</button>
@@ -494,14 +718,14 @@ const Dashboard = ({ user }) => {
                     </div>
                 )}
             </div>
-        </>
+        </div>
     );
 
     const renderAdminDashboard = () => (
-        <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h1 className="gradient-text">System Admin Overview</h1>
-                <div style={{ display: 'flex', gap: '1rem' }}>
+        <div className="dashboard-content-wrapper">
+            <div className="dashboard-header">
+                <h1 className="gradient-text" style={{ fontSize: '1.75rem' }}>System Admin Overview</h1>
+                <div className="dashboard-actions">
                     <StatCard icon={<TrendingUp color="#ef4444" />} title="Applications" value={adminLoans.length} sub="Total submitted" />
                     <StatCard icon={<Clock color="#8b5cf6" />} title="Pending" value={adminLoans.filter(l => l.status === 'pending').length} sub="Awaiting review" />
                 </div>
@@ -509,8 +733,8 @@ const Dashboard = ({ user }) => {
 
             <div className="card glass" style={{ marginTop: '1.5rem', overflow: 'hidden' }}>
                 <h3>Loan Applications</h3>
-                <div style={{ overflowX: 'auto', marginTop: '1.5rem' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <div className="table-container" style={{ marginTop: '1.5rem' }}>
+                    <table className="admin-table">
                         <thead>
                             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
                                 <th style={{ padding: '12px' }}>Borrower</th>
@@ -552,11 +776,20 @@ const Dashboard = ({ user }) => {
                                             onChange={(e) => handleAssignVendor(loan._id, e.target.value)}
                                             style={{ padding: '6px', background: '#1e293b', border: '1px solid #334155', borderRadius: '6px', color: 'white', fontSize: '0.8rem' }}
                                         >
-                                            <option value="">Assign Vendor</option>
-                                            {vendors.map(v => (
-                                                <option key={v._id} value={v._id}>{v.name}</option>
-                                            ))}
-                                        </select>
+                                            </select>
+                                    </td>
+                                    <td style={{ padding: '12px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <input 
+                                                type="number" 
+                                                min="1" 
+                                                max="28" 
+                                                placeholder="Day"
+                                                value={adminDueDays[loan._id] || loan.emiDueDay || ''}
+                                                onChange={(e) => setAdminDueDays(prev => ({ ...prev, [loan._id]: e.target.value }))}
+                                                style={{ width: '60px', padding: '6px', background: '#1e293b', border: '1px solid #334155', borderRadius: '6px', color: 'white', fontSize: '0.8rem' }}
+                                            />
+                                        </div>
                                     </td>
                                     <td style={{ padding: '12px', textAlign: 'right' }}>
                                         {loan.status === 'pending' && (
@@ -597,39 +830,91 @@ const Dashboard = ({ user }) => {
                     </table>
                 </div>
             </div>
-        </>
+        </div>
     );
 
-    return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            {user?.role === 'admin' ? renderAdminDashboard() :
-                user?.role === 'vendor' ? renderVendorDashboard() :
-                    renderBorrowerDashboard()}
+    if (!user) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading...</div>;
 
-            <UtilizationModal
-                isOpen={isUtilizationModalOpen}
-                onClose={() => setIsUtilizationModalOpen(false)}
-                loanId={selectedLoanId}
-                onRefresh={() => {
-                    if (user?.role === 'vendor') fetchVendorLoans();
-                    else fetchData();
-                    if (activeLoanId) fetchLoanBills(activeLoanId);
-                    fetchProfile();
-                }}
-            />
-        </motion.div>
+    return (
+        <div className="dashboard-container">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                {user?.role === 'admin' ? renderAdminDashboard() :
+                    user?.role === 'vendor' ? renderVendorDashboard() :
+                        renderBorrowerDashboard()}
+
+                <UtilizationModal
+                    isOpen={isUtilizationModalOpen}
+                    onClose={() => setIsUtilizationModalOpen(false)}
+                    loanId={selectedLoanId}
+                    onRefresh={() => {
+                        if (user?.role === 'vendor') fetchVendorLoans();
+                        else fetchData();
+                        if (activeLoanId) fetchLoanBills(activeLoanId);
+                        fetchProfile();
+                    }}
+                />
+
+                <RatingModal
+                    isOpen={isRatingModalOpen}
+                    onClose={() => setIsRatingModalOpen(false)}
+                    vendorId={ratingTarget.vendorId}
+                    loanId={ratingTarget.loanId}
+                    vendorName={ratingTarget.vendorName}
+                    onReviewSubmitted={() => {
+                        if (ratingTarget.vendorId) fetchVendorRating(ratingTarget.vendorId);
+                    }}
+                />
+
+                <EMIPaymentModal
+                    isOpen={isEMIModalOpen}
+                    onClose={() => setIsEMIModalOpen(false)}
+                    loanId={emiPaymentData.loanId}
+                    emiAmount={emiPaymentData.amount}
+                    loanPurpose={emiPaymentData.purpose}
+                    onRefresh={() => {
+                        fetchData();
+                        if (emiPaymentData.loanId) {
+                            fetchPayments(emiPaymentData.loanId);
+                            // Show certificate button for this loan after payment
+                            setShowCertificateLoans(prev => ({ ...prev, [emiPaymentData.loanId]: true }));
+                        }
+                    }}
+                />
+
+                    <PaymentMethodModal
+                        isOpen={isPaymentMethodModalOpen}
+                        onClose={() => setIsPaymentMethodModalOpen(false)}
+                        loanId={activeLoanId}
+                        onRefresh={fetchData}
+                        user={user}
+                        onOpenLinkBank={() => {
+                            setIsPaymentMethodModalOpen(false);
+                            setIsLinkBankModalOpen(true);
+                        }}
+                    />
+
+                <LinkBankModal
+                    isOpen={isLinkBankModalOpen}
+                    onClose={() => setIsLinkBankModalOpen(false)}
+                    onRefresh={() => {
+                        fetchProfile();
+                        fetchData();
+                    }}
+                />
+            </motion.div>
+            </div>
     );
 };
 
 const StatCard = ({ icon, title, value, sub }) => (
-    <div className="card glass" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <div style={{ padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)' }}>
+    <div className="card glass stat-card">
+        <div className="stat-icon">
             {icon}
         </div>
-        <div>
-            <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{title}</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{value}</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{sub}</div>
+        <div className="stat-info">
+            <div className="title">{title}</div>
+            <div className="value">{value}</div>
+            <div className="sub">{sub}</div>
         </div>
     </div>
 );

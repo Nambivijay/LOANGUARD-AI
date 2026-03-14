@@ -34,6 +34,9 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/loans', require('./routes/loanRoutes'));
+app.use('/api/offers', require('./routes/offerRoutes'));
+app.use('/api/ai', require('./routes/aiRoutes'));
+app.use('/api/reviews', require('./routes/reviewRoutes'));
 
 app.get('/', (req, res) => {
     res.send('Loan Utilization API is running...');

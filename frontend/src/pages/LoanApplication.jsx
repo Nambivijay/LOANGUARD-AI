@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect } from 'react';
 
 const calculateEMI = (amount, annualRate, months) => {
     const P = Number(amount);
@@ -46,7 +47,25 @@ const LoanApplication = () => {
     const [isVerifying, setIsVerifying] = useState(false);
 
     const navigate = useNavigate();
+    const location = useLocation();
     const { showToast } = useToast();
+
+    useEffect(() => {
+        if (location.state) {
+            const { amount, interestRate, tenureMonths } = location.state;
+            setFormData(prev => ({
+                ...prev,
+                amount: amount || prev.amount,
+                interestRate: interestRate || prev.interestRate,
+                tenureMonths: tenureMonths || prev.tenureMonths
+            }));
+            // If pre-filled from an offer, jump to step 3 to check loan details
+            if (amount || interestRate || tenureMonths) {
+                setStep(3);
+                showToast('Loan details pre-filled from selected offer', 'success');
+            }
+        }
+    }, [location.state, showToast]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -82,7 +101,7 @@ const LoanApplication = () => {
 
         try {
             const token = localStorage.getItem('token');
-            await axios.post('http://localhost:5001/api/loans/verify-files', data, {
+            await axios.post('/api/loans/verify-files', data, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -135,13 +154,14 @@ const LoanApplication = () => {
 
         try {
             const token = localStorage.getItem('token');
-            await axios.post('http://localhost:5001/api/loans', data, {
+            const response = await axios.post('/api/loans', data, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
-            alert('Loan application submitted successfully!');
-            navigate('/dashboard');
+            const { loan, eligible, eligibilityMessage } = response.data;
+            showToast(eligible ? 'Loan Automatically Approved!' : 'Application Submitted Successfully', 'success');
+            navigate('/dashboard', { state: { eligibilityResult: { eligible, message: eligibilityMessage } } });
         } catch (error) {
             console.error('Submission error:', error);
             alert('Failed to submit application: ' + (error.response?.data?.message || error.message));
@@ -265,13 +285,20 @@ const LoanApplication = () => {
             <style jsx>{`
                 .loan-application-container {
                     max-width: 650px;
-                    margin: 4rem auto;
-                    padding: 3rem;
+                    margin: 2rem auto;
+                    padding: 2.5rem;
                     background: rgba(255, 255, 255, 0.95);
                     backdrop-filter: blur(10px);
                     border-radius: 20px;
                     box-shadow: 0 10px 30px rgba(0,0,0,0.15);
                     border: 1px solid rgba(255,255,255,0.3);
+                }
+                @media (max-width: 768px) {
+                    .loan-application-container {
+                        margin: 1rem;
+                        padding: 1.5rem;
+                    }
+                    h1 { font-size: 1.8rem; }
                 }
                 h1 { 
                     font-size: 2.2rem;
@@ -340,6 +367,14 @@ const LoanApplication = () => {
                     gap: 1rem; 
                     justify-content: flex-end; 
                     margin-top: 2rem; 
+                }
+                @media (max-width: 480px) {
+                    .button-group {
+                        flex-direction: column;
+                    }
+                    .button-group button {
+                        width: 100%;
+                    }
                 }
                 button {
                     padding: 0.9rem 2rem;

@@ -15,8 +15,8 @@ const Register = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://127.0.0.1:5001/api/auth/register', { name, email, password, role });
-            showToast('Login Successfully');
+            await axios.post('/api/auth/register', { name, email, password, role });
+            showToast('Registration successful! Please login.');
             navigate('/login');
         } catch (error) {
             showToast(error.response?.data?.message || 'Server unreachable or error occurred', 'error');
@@ -24,7 +24,7 @@ const Register = () => {
     };
 
     return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', padding: '1rem' }}>
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}

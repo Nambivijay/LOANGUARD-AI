@@ -13,7 +13,10 @@ const {
     assignVendorAdmin,
     payEMI,
     getEMIPayments,
-    confirmUtilization
+    getTransactions,
+    confirmUtilization,
+    updatePaymentMethod,
+    getNoDueCertificate
 } = require('../controllers/loanController');
 const { protect, vendorOnly, adminOnly } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
@@ -33,6 +36,9 @@ router.post('/utilization', protect, upload.single('proofImage'), addUtilization
 router.get('/:loanId/utilization', protect, getLoanUtilization);
 router.post('/emi-payment', protect, payEMI);
 router.get('/:loanId/payments', protect, getEMIPayments);
+router.get('/transactions', protect, getTransactions);
+router.put('/payment-method', protect, updatePaymentMethod);
+router.get('/:id/certificate', protect, getNoDueCertificate);
 
 // Vendor Routes
 router.get('/vendor/assigned', protect, vendorOnly, getVendorLoans);

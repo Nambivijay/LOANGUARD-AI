@@ -11,12 +11,14 @@ const UtilizationModal = ({ isOpen, onClose, loanId, onRefresh }) => {
     const [success, setSuccess] = useState(false);
     const [vendors, setVendors] = useState([]);
     const [selectedVendor, setSelectedVendor] = useState('');
+    const [billNumber, setBillNumber] = useState('');
+    const [billDate, setBillDate] = useState('');
 
     useEffect(() => {
         const fetchVendors = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const { data } = await axios.get('http://127.0.0.1:5001/api/auth/vendors', {
+                const { data } = await axios.get('/api/auth/vendors', {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setVendors(data);
@@ -39,10 +41,12 @@ const UtilizationModal = ({ isOpen, onClose, loanId, onRefresh }) => {
             formData.append('amount', amount);
             formData.append('category', category);
             formData.append('description', description);
+            formData.append('billNumber', billNumber);
+            formData.append('billDate', billDate);
             if (selectedVendor) formData.append('vendorId', selectedVendor);
             if (file) formData.append('proofImage', file);
 
-            await axios.post('http://127.0.0.1:5001/api/loans/utilization', formData, {
+            await axios.post('/api/loans/utilization', formData, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data'
@@ -58,6 +62,8 @@ const UtilizationModal = ({ isOpen, onClose, loanId, onRefresh }) => {
                 setCategory('');
                 setDescription('');
                 setSelectedVendor('');
+                setBillNumber('');
+                setBillDate('');
                 setFile(null);
             }, 1500);
         } catch (error) {
@@ -68,8 +74,8 @@ const UtilizationModal = ({ isOpen, onClose, loanId, onRefresh }) => {
     };
 
     return (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, backdropFilter: 'blur(4px)' }}>
-            <div className="card glass" style={{ width: '100%', maxWidth: '450px', position: 'relative' }}>
+        <div className="modal-overlay">
+            <div className="card glass modal-content" style={{ position: 'relative' }}>
                 <button onClick={onClose} style={{ position: 'absolute', right: '20px', top: '20px', background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
                     <X size={24} />
                 </button>
@@ -87,6 +93,16 @@ const UtilizationModal = ({ isOpen, onClose, loanId, onRefresh }) => {
                             <div>
                                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Amount (₹)</label>
                                 <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" style={{ width: '100%' }} required />
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Bill Number</label>
+                                    <input type="text" value={billNumber} onChange={(e) => setBillNumber(e.target.value)} placeholder="INV-001" style={{ width: '100%' }} required />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Bill Date</label>
+                                    <input type="date" value={billDate} onChange={(e) => setBillDate(e.target.value)} style={{ width: '100%' }} required />
+                                </div>
                             </div>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Category</label>

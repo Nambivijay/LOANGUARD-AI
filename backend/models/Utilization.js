@@ -6,6 +6,8 @@ const utilizationSchema = new mongoose.Schema({
     vendor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     category: { type: String, required: true },
     amount: { type: Number, required: true },
+    billNumber: { type: String, required: true },
+    billDate: { type: Date, required: true },
     description: { type: String },
     proofImage: { type: String }, // Cloudinary URL
     status: { type: String, enum: ['pending', 'verified', 'flagged'], default: 'pending' },
