@@ -16,23 +16,23 @@ const {
 const { protect } = require('../middleware/authMiddleware');
 const router = express.Router();
 
-router.post('/register', register);
-router.post('/login', login);
-router.post('/verify-login-otp', verifyLoginOTP);
-router.post('/resend-login-otp', resendLoginOTP);
-router.get('/me', protect, getMe);
-router.put('/read-notifications', protect, markNotificationsRead);
-router.get('/vendors', protect, getVendors);
+router.post('https://loanguard-ai-03c3.onrender.com/register', register);
+router.post('https://loanguard-ai-03c3.onrender.com/login', login);
+router.post('https://loanguard-ai-03c3.onrender.com/verify-login-otp', verifyLoginOTP);
+router.post('https://loanguard-ai-03c3.onrender.com/resend-login-otp', resendLoginOTP);
+router.get('https://loanguard-ai-03c3.onrender.com/me', protect, getMe);
+router.put('https://loanguard-ai-03c3.onrender.com/read-notifications', protect, markNotificationsRead);
+router.get('https://loanguard-ai-03c3.onrender.com/vendors', protect, getVendors);
 
 // Verification Routes
-router.post('/send-otp', protect, sendOTP);
+router.post('https://loanguard-ai-03c3.onrender.com/send-otp', protect, sendOTP);
 router.post('/verify-otp', protect, verifyOTP);
 
 // Profile Routes
-router.put('/profile', protect, updateProfile);
-router.put('/link-bank', protect, linkBank);
+router.put('https://loanguard-ai-03c3.onrender.com/profile', protect, updateProfile);
+router.put('https://loanguard-ai-03c3.onrender.com/link-bank', protect, linkBank);
 
 // Auth Action Routes
-router.post('/reset-password', resetPassword);
+router.post('https://loanguard-ai-03c3.onrender.com/reset-password', resetPassword);
 
 module.exports = router;
